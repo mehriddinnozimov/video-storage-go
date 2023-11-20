@@ -4,6 +4,7 @@ import (
 	"context"
 	"video-storage/configs"
 	"video-storage/types"
+	"video-storage/utils"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -44,12 +45,25 @@ func (us *UserService) Create(c context.Context, payload *types.User) error {
 	return err
 }
 
-func (us *UserService) GetMany(c context.Context) ([]types.User, error) {
+func (us *UserService) GetMany(c context.Context, filter types.UserFilter) ([]types.User, error) {
 	ctx, cancel := context.WithTimeout(c, configs.CONTEXT_TIMEOUT)
 	defer cancel()
 
+	query := bson.M{}
+
+	if utils.Has(filter, "FullName") {
+		query["full_name"] = bson.M{
+			"$regex": filter.FullName,
+		}
+	}
+
+	if utils.Has(filter, "Email") {
+		query["email"] = bson.M{
+			"$regex": filter.Email,
+		}
+	}
 	opts := options.Find().SetProjection(bson.D{{Key: "password", Value: 0}})
-	cursor, err := us.collection.Find(ctx, bson.D{}, opts)
+	cursor, err := us.collection.Find(ctx, query, opts)
 
 	if err != nil {
 		return nil, err
@@ -74,6 +88,28 @@ func (us *UserService) GetOneByEmail(c context.Context, email string) (types.Use
 	return user, err
 }
 
+func (us *UserService) GetOneByEmailAndPassword(c context.Context, email string, password string) (types.User, error) {
+	user, err := us.GetOneByEmail(c, email)
+	if err != nil {
+		return user, err
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+
+	return user, err
+}
+
+func (us *UserService) GetOneByIDAndPassword(c context.Context, id string, password string) (types.User, error) {
+	user, err := us.GetOneByID(c, id)
+	if err != nil {
+		return user, err
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+
+	return user, err
+}
+
 func (us *UserService) GetOneByID(c context.Context, id string) (types.User, error) {
 	ctx, cancel := context.WithTimeout(c, configs.CONTEXT_TIMEOUT)
 	defer cancel()
@@ -89,16 +125,33 @@ func (us *UserService) GetOneByID(c context.Context, id string) (types.User, err
 	return user, err
 }
 
-func (us *UserService) UpdateOneByID(c context.Context, id string, payload *types.User) (int64, error) {
+func (us *UserService) UpdateOneByID(c context.Context, id string, payload types.UserUpdate) (int64, error) {
 	ctx, cancel := context.WithTimeout(c, configs.CONTEXT_TIMEOUT)
 	defer cancel()
+
+	if utils.Has(payload, "Password") {
+		encryptedPassword, err := bcrypt.GenerateFromPassword(
+			[]byte(payload.Password),
+			bcrypt.DefaultCost,
+		)
+		if err != nil {
+			return 0, err
+		}
+
+		payload.Password = string(encryptedPassword)
+	}
 
 	idHex, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return 0, err
 	}
 
-	result, err := us.collection.UpdateOne(ctx, bson.M{"_id": idHex}, payload)
+	result, err := us.collection.UpdateOne(ctx, bson.M{"_id": idHex}, bson.M{
+		"$set": payload,
+	})
+	if err != nil {
+		return 0, err
+	}
 	return result.MatchedCount, err
 }
 
@@ -112,5 +165,8 @@ func (us *UserService) RemoveOneByID(c context.Context, id string) (int64, error
 	}
 
 	result, err := us.collection.DeleteOne(ctx, bson.M{"_id": idHex})
+	if err != nil {
+		return 0, err
+	}
 	return result.DeletedCount, err
 }

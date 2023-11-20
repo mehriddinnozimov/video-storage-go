@@ -1,7 +1,6 @@
 package configs
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/spf13/viper"
@@ -24,7 +23,7 @@ type Envs struct {
 	PaymentUrl     string `mapstruckture:"PAYMENT_URL"`
 	GinMode        string `mapstruckture:"GIN_MODE"`
 	Domain         string `mapstruckture:"DOMAIN"`
-	IsSecure       string `mapstruckture:"IS_SECURE"`
+	IsSecure       bool   `mapstruckture:"IS_SECURE"`
 }
 
 func GetEnv() *Envs {
@@ -41,8 +40,6 @@ func GetEnv() *Envs {
 	if env.AppEnv == "development" {
 		log.Println("The App is running in development env")
 	}
-
-	fmt.Println(env.IsSecure)
 
 	return &env
 }

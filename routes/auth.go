@@ -11,4 +11,5 @@ func Auth(db mongo.Database, group *gin.RouterGroup) {
 	authController := *controllers.NewAuthController(db)
 
 	group.POST("/register", authController.Register)
+	group.POST("/login", authController.Login)
 }

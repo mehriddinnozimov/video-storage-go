@@ -1,5 +1,6 @@
 package types
 
-type ErrorResponse struct {
-	Message string `json:"message"`
+type CustomResponse struct {
+	Ok      bool   `json:"ok"`
+	Message string `json:"message,omitempty"`
 }

@@ -22,18 +22,18 @@ func NewAuthController(db mongo.Database) *AuthController {
 }
 
 func (ac *AuthController) Register(c *gin.Context) {
-	var payload types.UserRegisterRequest
+	var payload types.UserRegister
 
 	err := c.ShouldBind(&payload)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, types.ErrorResponse{Message: err.Error()})
+		c.JSON(http.StatusBadRequest, types.CustomResponse{Ok: false, Message: err.Error()})
 		return
 	}
 
 	_, err = ac.userService.GetOneByEmail(c, payload.Email)
 	if err == nil {
-		c.JSON(http.StatusConflict, types.ErrorResponse{Message: "User already exists with the given email"})
+		c.JSON(http.StatusConflict, types.CustomResponse{Ok: false, Message: "User already exists with the given email"})
 		return
 	}
 
@@ -45,27 +45,58 @@ func (ac *AuthController) Register(c *gin.Context) {
 
 	err = ac.userService.Create(c, &user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, types.ErrorResponse{Message: err.Error()})
+		c.JSON(http.StatusInternalServerError, types.CustomResponse{Ok: false, Message: err.Error()})
+		return
 	}
 
-	userJSON := types.UserJSON{
-		ID:       user.ID,
-		FullName: user.FullName,
-		Email:    user.Email,
-	}
-
-	accress_token, err := utils.CreateToken(userJSON, configs.ENV.JwtSecret, configs.ACCESS_TOKEN_EXPIRE)
+	accress_token, err := utils.CreateToken(user.ID.Hex(), configs.ENV.JwtSecret, configs.ACCESS_TOKEN_EXPIRE)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, types.ErrorResponse{Message: err.Error()})
+		c.JSON(http.StatusInternalServerError, types.CustomResponse{Ok: false, Message: err.Error()})
+		return
 	}
 
-	refresh_token, err := utils.CreateToken(userJSON, configs.ENV.JwtSecret, configs.ACCESS_TOKEN_EXPIRE)
+	refresh_token, err := utils.CreateToken(user.ID.Hex(), configs.ENV.JwtSecret, configs.ACCESS_TOKEN_EXPIRE)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, types.ErrorResponse{Message: err.Error()})
+		c.JSON(http.StatusInternalServerError, types.CustomResponse{Ok: false, Message: err.Error()})
+		return
 	}
 
-	c.SetCookie("refresh_token", refresh_token, configs.REFRESH_TOKEN_EXPIRE, "/", configs.ENV.Domain, configs.ENV.IsSecure == "true", true)
-	c.SetCookie("access_token", accress_token, configs.ACCESS_TOKEN_EXPIRE, "/", configs.ENV.Domain, configs.ENV.IsSecure == "true", true)
+	c.SetCookie("refresh_token", refresh_token, int(configs.REFRESH_TOKEN_EXPIRE_BY_SECOND), "/", configs.ENV.Domain, configs.ENV.IsSecure, true)
+	c.SetCookie("access_token", accress_token, int(configs.ACCESS_TOKEN_EXPIRE_BY_SECOND), "/", configs.ENV.Domain, configs.ENV.IsSecure, true)
 
-	c.JSON(http.StatusOK, types.UserResponse{User: userJSON})
+	c.JSON(http.StatusOK, types.UserResponse{User: user})
+}
+
+func (ac *AuthController) Login(c *gin.Context) {
+	var payload types.UserLogin
+
+	err := c.ShouldBind(&payload)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, types.CustomResponse{Ok: false, Message: err.Error()})
+		return
+	}
+
+	user, err := ac.userService.GetOneByEmailAndPassword(c, payload.Email, payload.Password)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, types.CustomResponse{Ok: false, Message: err.Error()})
+		return
+	}
+
+	accress_token, err := utils.CreateToken(user.ID.Hex(), configs.ENV.JwtSecret, configs.ACCESS_TOKEN_EXPIRE)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, types.CustomResponse{Ok: false, Message: err.Error()})
+		return
+	}
+
+	refresh_token, err := utils.CreateToken(user.ID.Hex(), configs.ENV.JwtSecret, configs.REFRESH_TOKEN_EXPIRE)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, types.CustomResponse{Ok: false, Message: err.Error()})
+		return
+	}
+
+	c.SetCookie("refresh_token", refresh_token, int(configs.REFRESH_TOKEN_EXPIRE_BY_SECOND), "/", configs.ENV.Domain, configs.ENV.IsSecure, true)
+	c.SetCookie("access_token", accress_token, int(configs.ACCESS_TOKEN_EXPIRE_BY_SECOND), "/", configs.ENV.Domain, configs.ENV.IsSecure, true)
+
+	c.JSON(http.StatusOK, types.UserResponse{User: user})
 }

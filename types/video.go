@@ -9,4 +9,5 @@ type Video struct {
 	Name   string             `bson:"name"`
 	Time   string             `bson:"time"`
 	FileId string             `bson:"file_id"`
+	UserId primitive.ObjectID `bson:"user_id"`
 }
