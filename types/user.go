@@ -9,6 +9,8 @@ type User struct {
 	FullName string             `bson:"full_name,omitempty" json:"full_name,omitempty"`
 	Email    string             `bson:"email,omitempty" json:"email,omitempty"`
 	Password string             `bson:"password,omitempty" json:"-"`
+
+	Videos []Video `json:"videos"`
 }
 
 type UserUpdate struct {
@@ -26,6 +28,10 @@ type UserRegister struct {
 type UserFilter struct {
 	FullName string `form:"full_name,omitempty"`
 	Email    string `form:"email,omitempty"`
+}
+
+type UserParams struct {
+	UserId string `uri:"user_id"`
 }
 
 type UserUpdatePassword struct {

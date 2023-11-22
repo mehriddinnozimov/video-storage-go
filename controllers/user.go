@@ -36,3 +36,21 @@ func (uc *UserController) GetMany(c *gin.Context) {
 
 	c.JSON(http.StatusOK, types.UsersResponse{Users: users})
 }
+
+func (uc *UserController) GetOne(c *gin.Context) {
+	var filter types.UserParams
+
+	err := c.ShouldBindUri(&filter)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, types.CustomResponse{Ok: false, Message: err.Error()})
+		return
+	}
+
+	user, err := uc.userService.GetOneByIDWithVideos(c, filter.UserId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, types.CustomResponse{Ok: false, Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, types.UserResponse{User: user})
+}

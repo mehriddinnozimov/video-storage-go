@@ -66,7 +66,7 @@ func (us *UserService) GetMany(c context.Context, filter types.UserFilter) ([]ty
 	cursor, err := us.collection.Find(ctx, query, opts)
 
 	if err != nil {
-		return nil, err
+		return []types.User{}, err
 	}
 
 	var users []types.User
@@ -123,6 +123,47 @@ func (us *UserService) GetOneByID(c context.Context, id string) (types.User, err
 
 	err = us.collection.FindOne(ctx, bson.M{"_id": idHex}).Decode(&user)
 	return user, err
+}
+
+func (us *UserService) GetOneByIDWithVideos(c context.Context, id string) (types.User, error) {
+	ctx, cancel := context.WithTimeout(c, configs.CONTEXT_TIMEOUT)
+	defer cancel()
+
+	var users []types.User
+
+	idHex, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return types.User{}, err
+	}
+
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				"_id": idHex,
+			},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         configs.Collection.Video,
+				"localField":   "_id",
+				"foreignField": "user_id",
+				"as":           "videos",
+			},
+		},
+	}
+
+	cursor, err := us.collection.Aggregate(ctx, pipeline)
+
+	if err != nil {
+		return types.User{}, err
+	}
+
+	err = cursor.All(c, &users)
+	if users == nil {
+		return types.User{}, mongo.ErrNoDocuments
+	}
+
+	return users[0], err
 }
 
 func (us *UserService) UpdateOneByID(c context.Context, id string, payload types.UserUpdate) (int64, error) {

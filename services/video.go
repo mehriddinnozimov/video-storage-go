@@ -4,6 +4,7 @@ import (
 	"context"
 	"video-storage/configs"
 	"video-storage/types"
+	"video-storage/utils"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -33,18 +34,32 @@ func (vs *VideoService) Create(c context.Context, payload *types.Video) error {
 	return err
 }
 
-func (vs *VideoService) GetMany(c context.Context) ([]types.Video, error) {
+func (vs *VideoService) GetMany(c context.Context, filter types.VideoFilter) ([]types.Video, error) {
 	ctx, cancel := context.WithTimeout(c, configs.CONTEXT_TIMEOUT)
 	defer cancel()
 
-	opts := options.Find().SetProjection(bson.D{{Key: "password", Value: 0}})
-	cursor, err := vs.collection.Find(ctx, bson.D{}, opts)
+	var videos []types.Video
+
+	query := bson.M{}
+
+	if utils.Has(filter, "UserId") {
+		idHex, err := primitive.ObjectIDFromHex(filter.UserId)
+		if err != nil {
+			return []types.Video{}, err
+		}
+		query["user_id"] = idHex
+	}
+
+	if utils.Has(filter, "IsPublic") {
+		query["is_public"] = filter.IsPublic
+	}
+
+	opts := options.Find()
+	cursor, err := vs.collection.Find(ctx, query, opts)
 
 	if err != nil {
 		return nil, err
 	}
-
-	var videos []types.Video
 
 	err = cursor.All(c, &videos)
 	if videos == nil {
@@ -88,6 +103,10 @@ func (vs *VideoService) UpdateOneByID(c context.Context, id string, payload *typ
 	}
 
 	result, err := vs.collection.UpdateOne(ctx, bson.M{"_id": idHex}, payload)
+	if err != nil {
+		return 0, err
+	}
+
 	return result.MatchedCount, err
 }
 
@@ -101,5 +120,26 @@ func (vs *VideoService) RemoveOneByID(c context.Context, id string) (int64, erro
 	}
 
 	result, err := vs.collection.DeleteOne(ctx, bson.M{"_id": idHex})
+	if err != nil {
+		return 0, err
+	}
+
+	return result.DeletedCount, err
+}
+
+func (vs *VideoService) RemoveManyByUserID(c context.Context, user_id string) (int64, error) {
+	ctx, cancel := context.WithTimeout(c, configs.CONTEXT_TIMEOUT)
+	defer cancel()
+
+	userIdHex, err := primitive.ObjectIDFromHex(user_id)
+	if err != nil {
+		return 0, err
+	}
+
+	result, err := vs.collection.DeleteMany(ctx, bson.M{"user_id": userIdHex})
+	if err != nil {
+		return 0, err
+	}
+
 	return result.DeletedCount, err
 }

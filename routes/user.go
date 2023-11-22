@@ -8,7 +8,10 @@ import (
 )
 
 func User(db mongo.Database, group *gin.RouterGroup) {
-	ucController := *controllers.NewUserController(db)
+	userController := *controllers.NewUserController(db)
+	videoController := *controllers.NewVideoController(db)
 
-	group.GET("/", ucController.GetMany)
+	group.GET("/", userController.GetMany)
+	group.GET("/:user_id", userController.GetOne)
+	group.GET("/:user_id/video", videoController.GetManyByUserId)
 }

@@ -1,6 +1,8 @@
 package configs
 
-import "time"
+import (
+	"time"
+)
 
 const MAX_STRING int = 255
 const MIN_STRING int = 0
@@ -32,9 +34,8 @@ const TAKE_EXPIRE = DAY * 31 * 3
 const ESKIZ_BASE_URL string = "http://notify.eskiz.uz/api/"
 const ESKIZ_CALLBACK_URL string = `${PROTOCOL}://${HOST}:${PORT}/eskiz/callback`
 
-var ALLOW_IMAGE_MIME_TYPES = [...]string{"image/png", "image/jpeg", "image/webp"}
-var ALLOW_VIDEO_MIME_TYPES = [...]string{"video/mp4"}
-var ALLOW_PDF_MIME_TYPES = [...]string{"application/pdf"}
+var ALLOW_IMAGE_MIME_TYPES = []string{"image/png", "image/jpeg", "image/webp"}
+var ALLOW_VIDEO_MIME_TYPES = []string{"video/mp4"}
 
 const TEST_QUESTION_COUNT_FOR_CUSTOMER int = 10
 const TEST_QUESTION_TOTAL_COUNT int = 40
