@@ -45,8 +45,12 @@ func (uc *UserController) GetOne(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, types.CustomResponse{Ok: false, Message: err.Error()})
 		return
 	}
+	options := types.UserGetOneByIDWithVideosOptions{
+		Id:            filter.UserId,
+		VideoIsPublic: &[]bool{true}[0],
+	}
 
-	user, err := uc.userService.GetOneByIDWithVideos(c, filter.UserId)
+	user, err := uc.userService.GetOneByIDWithVideos(c, options)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, types.CustomResponse{Ok: false, Message: err.Error()})
 		return

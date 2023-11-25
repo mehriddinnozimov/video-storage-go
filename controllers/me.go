@@ -88,3 +88,32 @@ func (mc *MeController) UpdatePassword(c *gin.Context) {
 
 	c.JSON(http.StatusOK, types.CustomResponse{Ok: true})
 }
+
+func (mc *MeController) Remove(c *gin.Context) {
+	user_id := c.GetString("user_id")
+	var requestPayload types.UserUpdatePassword
+
+	err := c.ShouldBind(&requestPayload)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, types.CustomResponse{Ok: false, Message: err.Error()})
+		return
+	}
+
+	_, err = mc.userService.GetOneByIDAndPassword(c, user_id, requestPayload.OldPassword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, types.CustomResponse{Ok: false, Message: err.Error()})
+		return
+	}
+
+	payload := types.UserUpdate{
+		Password: requestPayload.Password,
+	}
+
+	_, err = mc.userService.UpdateOneByID(c, user_id, payload)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, types.CustomResponse{Ok: false, Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, types.CustomResponse{Ok: true})
+}

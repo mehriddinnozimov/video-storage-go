@@ -16,7 +16,7 @@ func Root(gin *gin.Engine, db mongo.Database, storage *drive.Service) {
 
 	Auth(db, publicRoute.Group("/auth"))
 	Me(db, protectedRoute.Group("/me"))
-	User(db, protectedRoute.Group("/user"))
-	Video(db, protectedRoute.Group("/video"))
+	User(db, storage, protectedRoute.Group("/user"))
+	Video(db, storage, protectedRoute.Group("/video"))
 	File(db, storage, protectedRoute.Group("/file"))
 }

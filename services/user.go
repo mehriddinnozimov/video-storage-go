@@ -125,31 +125,45 @@ func (us *UserService) GetOneByID(c context.Context, id string) (types.User, err
 	return user, err
 }
 
-func (us *UserService) GetOneByIDWithVideos(c context.Context, id string) (types.User, error) {
+func (us *UserService) GetOneByIDWithVideos(c context.Context, options types.UserGetOneByIDWithVideosOptions) (types.User, error) {
 	ctx, cancel := context.WithTimeout(c, configs.CONTEXT_TIMEOUT)
 	defer cancel()
 
 	var users []types.User
 
-	idHex, err := primitive.ObjectIDFromHex(id)
+	idHex, err := primitive.ObjectIDFromHex(options.Id)
 	if err != nil {
 		return types.User{}, err
 	}
 
+	matchPipeline := bson.M{
+		"$match": bson.M{
+			"_id": idHex,
+		},
+	}
+
+	videoLookupPipeline := bson.M{
+		"$lookup": bson.M{
+			"from":         configs.Collection.Video,
+			"localField":   "_id",
+			"foreignField": "user_id",
+			"as":           "videos",
+		},
+	}
+
+	if options.VideoIsPublic != nil {
+		videoLookupPipeline["pipline"] = []bson.M{
+			{
+				"$match": bson.M{
+					"is_public": options.VideoIsPublic,
+				},
+			},
+		}
+	}
+
 	pipeline := []bson.M{
-		{
-			"$match": bson.M{
-				"_id": idHex,
-			},
-		},
-		{
-			"$lookup": bson.M{
-				"from":         configs.Collection.Video,
-				"localField":   "_id",
-				"foreignField": "user_id",
-				"as":           "videos",
-			},
-		},
+		matchPipeline,
+		videoLookupPipeline,
 	}
 
 	cursor, err := us.collection.Aggregate(ctx, pipeline)

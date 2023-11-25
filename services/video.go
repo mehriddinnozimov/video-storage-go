@@ -93,7 +93,7 @@ func (vs *VideoService) GetOneByID(c context.Context, id string) (types.Video, e
 	return video, err
 }
 
-func (vs *VideoService) UpdateOneByID(c context.Context, id string, payload *types.Video) (int64, error) {
+func (vs *VideoService) UpdateOneByID(c context.Context, id string, payload types.VideoUpdate) (int64, error) {
 	ctx, cancel := context.WithTimeout(c, configs.CONTEXT_TIMEOUT)
 	defer cancel()
 
@@ -120,6 +120,31 @@ func (vs *VideoService) RemoveOneByID(c context.Context, id string) (int64, erro
 	}
 
 	result, err := vs.collection.DeleteOne(ctx, bson.M{"_id": idHex})
+	if err != nil {
+		return 0, err
+	}
+
+	return result.DeletedCount, err
+}
+
+func (vs *VideoService) RemoveOneByIDAndUserId(c context.Context, id string, user_id string) (int64, error) {
+	ctx, cancel := context.WithTimeout(c, configs.CONTEXT_TIMEOUT)
+	defer cancel()
+
+	videoId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return 0, err
+	}
+
+	userId, err := primitive.ObjectIDFromHex(user_id)
+	if err != nil {
+		return 0, err
+	}
+
+	result, err := vs.collection.DeleteOne(ctx, bson.M{
+		"_id":     videoId,
+		"user_id": userId,
+	})
 	if err != nil {
 		return 0, err
 	}

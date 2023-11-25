@@ -50,3 +50,8 @@ type UserResponse struct {
 type UsersResponse struct {
 	Users []User `json:"users"`
 }
+
+type UserGetOneByIDWithVideosOptions struct {
+	Id            string
+	VideoIsPublic *bool
+}
